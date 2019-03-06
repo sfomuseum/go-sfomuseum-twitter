@@ -123,8 +123,8 @@ func main() {
 		return true
 	}
 
-	write_row([]string{ "property", "value" })
-	
+	write_row([]string{"property", "value"})
+
 	mentions.Range(func(key interface{}, value interface{}) bool {
 
 		user := key.(string)
