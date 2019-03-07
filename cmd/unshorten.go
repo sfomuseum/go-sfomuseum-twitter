@@ -132,15 +132,13 @@ func main() {
 				short_rsp := u.Get("expanded_url")
 				short_url := short_rsp.String()
 
-				_, ok := lookup.Load(short_url)
+				_, ok := lookup.LoadOrStore(short_url, "...")
 
 				if ok {
 					return
 				}
 
-				lookup.Store(short_url, "...")
 				atomic.AddInt32(&count_urls, 1)
-
 				to_fetch = append(to_fetch, short_url)
 			}
 
