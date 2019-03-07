@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -98,8 +99,10 @@ func main() {
 		log.Fatal("Nothing to export")
 	}
 
-	count := len(rsp.Array())
-	remaining := count
+	count_tweets := len(rsp.Array())
+	count_urls := int32(0)
+
+	remaining := count_tweets
 
 	completed_ch := make(chan bool)
 	done_ch := make(chan bool)
@@ -135,6 +138,9 @@ func main() {
 					return
 				}
 
+				lookup.Store(short_url, "...")
+				atomic.AddInt32(&count_urls, 1)
+
 				to_fetch = append(to_fetch, short_url)
 			}
 
@@ -148,6 +154,8 @@ func main() {
 			for _, short_url := range to_fetch {
 
 				url, err := unshortener.UnshortenString(ctx, cache, short_url)
+
+				atomic.AddInt32(&count_urls, -1)
 
 				if err != nil {
 					lookup.Store(short_url, "?")
@@ -178,7 +186,7 @@ func main() {
 				case <-completed_ch:
 					break
 				case <-time.After(10 * time.Second):
-					log.Printf("%d of %d URLs left to unshorten\n", remaining, count)
+					log.Printf("%d of %d tweets left to unshorten (%d URLs remaining)\n", remaining, count_tweets, atomic.LoadInt32(&count_urls))
 				}
 			}
 		}()
