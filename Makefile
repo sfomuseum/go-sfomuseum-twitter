@@ -33,4 +33,5 @@ fmt:
 bin: 	self
 	rm -rf bin/*
 	@GOPATH=$(GOPATH) go build -o bin/dump cmd/dump.go
+	@GOPATH=$(GOPATH) go build -o bin/trim cmd/trim.go
 	@GOPATH=$(GOPATH) go build -o bin/unshorten cmd/unshorten.go
