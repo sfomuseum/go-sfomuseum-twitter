@@ -19,11 +19,12 @@ import (
 
 func main() {
 
+	progress := flag.Bool("progress", false, "Display progress information")
 	qps := flag.Int("qps", 10, "Number of (unshortening) queries per second")
 	to := flag.Int("timeout", 30, "Maximum number of seconds of for an unshorterning request")
 	seed_file := flag.String("seed", "", "Pre-fill the unshortening cache with data in this file")
 
-	tweets := flag.String("tweets", "", "...")
+	tweets := flag.String("tweets", "", "The path your Twitter archive tweet.js file")
 
 	flag.Parse()
 
@@ -100,6 +101,7 @@ func main() {
 	count := len(rsp.Array())
 	remaining := count
 
+	completed_ch := make(chan bool)
 	done_ch := make(chan bool)
 	err_ch := make(chan error)
 
@@ -167,6 +169,21 @@ func main() {
 		return true
 	})
 
+	if *progress {
+
+		go func() {
+
+			for {
+				select {
+				case <-completed_ch:
+					break
+				case <-time.After(10 * time.Second):
+					log.Printf("%d of %d URLs left to unshorten\n", remaining, count)
+				}
+			}
+		}()
+	}
+
 	for remaining > 0 {
 		select {
 		case <-done_ch:
@@ -178,6 +195,8 @@ func main() {
 			// pass
 		}
 	}
+
+	completed_ch <- true
 
 	report := make(map[string]string)
 
