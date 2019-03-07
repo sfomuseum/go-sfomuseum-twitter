@@ -100,9 +100,10 @@ func main() {
 	}
 
 	count_tweets := len(rsp.Array())
-	count_urls := int32(0)
+	remaining_tweets := count_tweets
 
-	remaining := count_tweets
+	count_urls := int32(0)
+	remaining_urls := count_urls
 
 	completed_ch := make(chan bool)
 	done_ch := make(chan bool)
@@ -130,6 +131,12 @@ func main() {
 			for _, u := range urls_rsp.Array() {
 
 				short_rsp := u.Get("expanded_url")
+
+				if !short_rsp.Exists() {
+					err_ch <- errors.New("Missing expanded_url property")
+					continue
+				}
+
 				short_url := short_rsp.String()
 
 				_, ok := lookup.LoadOrStore(short_url, "...")
@@ -139,6 +146,8 @@ func main() {
 				}
 
 				atomic.AddInt32(&count_urls, 1)
+				atomic.AddInt32(&remaining_urls, 1)
+
 				to_fetch = append(to_fetch, short_url)
 			}
 
@@ -153,7 +162,7 @@ func main() {
 
 				url, err := unshortener.UnshortenString(ctx, cache, short_url)
 
-				atomic.AddInt32(&count_urls, -1)
+				atomic.AddInt32(&remaining_urls, -1)
 
 				if err != nil {
 					lookup.Store(short_url, "?")
@@ -184,17 +193,20 @@ func main() {
 				case <-completed_ch:
 					break
 				case <-time.After(10 * time.Second):
-					log.Printf("%d of %d tweets left to unshorten (%d URLs remaining)\n", remaining, count_tweets, atomic.LoadInt32(&count_urls))
+
+					count := atomic.LoadInt32(&count_urls)
+					remaining := atomic.LoadInt32(&remaining_urls)
+
+					log.Printf("%d of %d URLs left to unshorten (from %d tweets)\n", remaining, count, count_tweets)
 				}
 			}
 		}()
 	}
 
-	for remaining > 0 {
+	for remaining_tweets > 0 {
 		select {
 		case <-done_ch:
-			remaining -= 1
-			// log.Printf("%d of %d remaining\n", remaining, count)
+			remaining_tweets -= 1
 		case err := <-err_ch:
 			log.Println(err)
 		default:
