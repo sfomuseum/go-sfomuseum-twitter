@@ -3,13 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"github.com/sfomuseum/go-url-unshortener"
 	"github.com/tidwall/gjson"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -100,6 +103,8 @@ func main() {
 	done_ch := make(chan bool)
 	err_ch := make(chan error)
 
+	lookup := new(sync.Map)
+
 	rsp.ForEach(func(_, tw gjson.Result) bool {
 
 		go func(tw gjson.Result) {
@@ -108,16 +113,54 @@ func main() {
 				done_ch <- true
 			}()
 
-			short_url := "PLEASE WRITE ME"
+			urls_rsp := tw.Get("entities.urls")
 
-			long_url, err := unshortener.UnshortenString(ctx, cache, short_url)
-
-			if err != nil {
-				err_ch <- err
+			if !urls_rsp.Exists() {
+				err_ch <- errors.New("Missing URLs")
 				return
 			}
 
-			log.Println(short_url, long_url)
+			to_fetch := make([]string, 0)
+
+			for _, u := range urls_rsp.Array() {
+
+				short_rsp := u.Get("expanded_url")
+				short_url := short_rsp.String()
+
+				_, ok := lookup.Load(short_url)
+
+				if ok {
+					return
+				}
+
+				to_fetch = append(to_fetch, short_url)
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// pass
+			}
+
+			for _, short_url := range to_fetch {
+
+				url, err := unshortener.UnshortenString(ctx, cache, short_url)
+
+				if err != nil {
+					lookup.Store(short_url, "?")
+					err_ch <- err
+					continue
+				}
+
+				long_url := url.String()
+
+				if short_url == long_url {
+					long_url = "-"
+				}
+
+				lookup.Store(short_url, long_url)
+			}
 
 		}(tw)
 
@@ -134,6 +177,27 @@ func main() {
 		default:
 			// pass
 		}
+	}
+
+	report := make(map[string]string)
+
+	lookup.Range(func(k interface{}, v interface{}) bool {
+		shortened_url := k.(string)
+		unshortened_url := v.(string)
+		report[shortened_url] = unshortened_url
+		return true
+	})
+
+	writers := make([]io.Writer, 0)
+	writers = append(writers, os.Stdout)
+
+	out := io.MultiWriter(writers...)
+
+	enc := json.NewEncoder(out)
+	err = enc.Encode(report)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 }
