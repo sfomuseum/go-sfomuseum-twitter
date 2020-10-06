@@ -3,33 +3,34 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/sfomuseum/go-sfomuseum-twitter"
+	_ "gocloud.dev/blob/fileblob"
 	"io"
 	"log"
 	"os"
-	"github.com/sfomuseum/go-sfomuseum-twitter/document"
 )
 
 func main() {
 
-	tweets := flag.String("tweets", "", "The path to your `tweets.js` file.")
+	tweets_uri := flag.String("tweets-uri", "", "A valid gocloud.dev/blob URI to your `tweets.js` file.")
 
 	flag.Parse()
 
 	ctx := context.Background()
-	
-	fh, err := os.Open(*tweets)
+
+	opts := &twitter.OpenTweetsOptions{
+		TrimPrefix: true,
+	}
+
+	fh, err := twitter.OpenTweets(ctx, *tweets_uri, opts)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	trimmed, err := document.TrimJavaScriptPrefix(ctx, fh)
+	defer fh.Close()
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	_, err = io.Copy(os.Stdout, trimmed)
+	_, err = io.Copy(os.Stdout, fh)
 
 	if err != nil {
 		log.Fatal(err)

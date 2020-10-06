@@ -3,7 +3,6 @@ package walk
 import (
 	"context"
 	"encoding/json"
-	"github.com/sfomuseum/go-sfomuseum-twitter/document"
 	"io"
 )
 
@@ -11,7 +10,47 @@ type WalkOptions struct {
 	TweetChannel chan []byte
 	ErrorChannel chan error
 	DoneChannel  chan bool
-	TrimPrefix bool
+}
+
+type WalkTweetsCallbackFunc func(ctx context.Context, tweet []byte) error
+
+func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTweetsCallbackFunc) error {
+
+	err_ch := make(chan error)
+	tweet_ch := make(chan []byte)
+	done_ch := make(chan bool)
+
+	walk_opts := &WalkOptions{
+		DoneChannel:  done_ch,
+		ErrorChannel: err_ch,
+		TweetChannel: tweet_ch,
+	}
+
+	go WalkTweets(ctx, walk_opts, tweets_fh)
+
+	working := true
+
+	for {
+		select {
+		case <-done_ch:
+			working = false
+		case err := <-err_ch:
+			return err
+		case body := <-tweet_ch:
+
+			err := cb(ctx, body)
+
+			if err != nil {
+				err_ch <- err
+			}
+		}
+
+		if !working {
+			break
+		}
+	}
+
+	return nil
 }
 
 func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.Reader) {
@@ -20,19 +59,6 @@ func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.Reader) {
 		opts.DoneChannel <- true
 	}()
 
-	if opts.TrimPrefix {
-
-		fh, err := document.TrimJavaScriptPrefix(ctx, tweets_fh)
-
-		if err != nil {
-			opts.ErrorChannel <- err
-			return
-		}
-
-		tweets_fh = fh
-
-	}
-	
 	type post struct {
 		Tweet interface{} `json:"tweet"`
 	}

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"errors"
 	"flag"
+	"github.com/sfomuseum/go-sfomuseum-twitter"
+	"github.com/sfomuseum/go-sfomuseum-twitter/walk"
 	"github.com/tidwall/gjson"
+	_ "gocloud.dev/blob/fileblob"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -17,93 +20,72 @@ func main() {
 	dump_hashtags := flag.Bool("hashtags", true, "Export hash tags in tweets.")
 	dump_mentions := flag.Bool("mentions", true, "Export users mentioned in tweets.")
 
-	tweets := flag.String("tweets", "", "The path your Twitter archive tweet.json file (produced by the sfomuseum/go-sfomuseum-twitter/cmd/trim tool, or equivalent)")
+	tweets_uri := flag.String("tweets-uri", "", "A valid gocloud.dev/blob URI to your `tweets.js` file.")
+	trim_prefix := flag.Bool("trim-prefix", true, "")
 
 	flag.Parse()
 
-	fh, err := os.Open(*tweets)
+	ctx := context.Background()
+
+	open_opts := &twitter.OpenTweetsOptions{
+		TrimPrefix: *trim_prefix,
+	}
+
+	tweets_fh, err := twitter.OpenTweets(ctx, *tweets_uri, open_opts)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to open %s, %v", *tweets_uri, err)
 	}
 
-	defer fh.Close()
-
-	body, err := ioutil.ReadAll(fh)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	rsp := gjson.ParseBytes(body)
-
-	if !rsp.Exists() {
-		log.Fatal("Nothing to export")
-	}
-
-	count := len(rsp.Array())
-	remaining := count
+	defer tweets_fh.Close()
 
 	mentions := new(sync.Map)
 	hashtags := new(sync.Map)
 
-	done_ch := make(chan bool)
-	err_ch := make(chan error)
+	cb := func(ctx context.Context, body []byte) error {
 
-	rsp.ForEach(func(_, tw gjson.Result) bool {
-
-		go func(tw gjson.Result) {
-
-			defer func() {
-				done_ch <- true
-			}()
-
-			// log.Println(tw.String())
-
-			if *dump_mentions {
-				mentions_rsp := tw.Get("tweet.entities.user_mentions")
-
-				if !mentions_rsp.Exists() {
-					err_ch <- errors.New("Missing mentions")
-					return
-				}
-
-				for _, m := range mentions_rsp.Array() {
-					user_rsp := m.Get("screen_name")
-					user := user_rsp.String()
-					mentions.Store(user, true)
-				}
-			}
-
-			if *dump_hashtags {
-				hashtags_rsp := tw.Get("tweet.entities.hashtags")
-
-				if !hashtags_rsp.Exists() {
-					err_ch <- errors.New("Missing hashtags")
-					return
-				}
-
-				for _, h := range hashtags_rsp.Array() {
-					tag_rsp := h.Get("text")
-					tag := tag_rsp.String()
-					hashtags.Store(tag, true)
-				}
-			}
-		}(tw)
-
-		return true
-	})
-
-	for remaining > 0 {
 		select {
-		case <-done_ch:
-			remaining -= 1
-			// log.Printf("%d of %d remaining\n", remaining, count)
-		case err := <-err_ch:
-			log.Println(err)
+		case <-ctx.Done():
+			return nil
 		default:
 			// pass
 		}
+
+		if *dump_mentions {
+			mentions_rsp := gjson.GetBytes(body, "entities.user_mentions")
+
+			if !mentions_rsp.Exists() {
+				return errors.New("Missing mentions")
+			}
+
+			for _, m := range mentions_rsp.Array() {
+				user_rsp := m.Get("screen_name")
+				user := user_rsp.String()
+				mentions.Store(user, true)
+			}
+		}
+
+		if *dump_hashtags {
+			hashtags_rsp := gjson.GetBytes(body, "entities.hashtags")
+
+			if !hashtags_rsp.Exists() {
+				return errors.New("Missing hashtags")
+			}
+
+			for _, h := range hashtags_rsp.Array() {
+				tag_rsp := h.Get("text")
+				tag := tag_rsp.String()
+				hashtags.Store(tag, true)
+			}
+		}
+
+		return nil
+	}
+
+	err = walk.WalkTweetsWithCallback(ctx, tweets_fh, cb)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	writers := []io.Writer{
