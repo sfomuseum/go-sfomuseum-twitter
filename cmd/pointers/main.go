@@ -14,10 +14,10 @@ import (
 
 func main() {
 
-	dump_hashtags := flag.Bool("hashtags", true, "...")
-	dump_mentions := flag.Bool("mentions", true, "...")
+	dump_hashtags := flag.Bool("hashtags", true, "Export hash tags in tweets.")
+	dump_mentions := flag.Bool("mentions", true, "Export users mentioned in tweets.")
 
-	tweets := flag.String("tweets", "", "...")
+	tweets := flag.String("tweets", "", "The path your Twitter archive tweet.json file (produced by the sfomuseum/go-sfomuseum-twitter/cmd/trim tool, or equivalent)")
 
 	flag.Parse()
 
@@ -58,8 +58,10 @@ func main() {
 				done_ch <- true
 			}()
 
+			// log.Println(tw.String())
+
 			if *dump_mentions {
-				mentions_rsp := tw.Get("entities.user_mentions")
+				mentions_rsp := tw.Get("tweet.entities.user_mentions")
 
 				if !mentions_rsp.Exists() {
 					err_ch <- errors.New("Missing mentions")
@@ -74,7 +76,7 @@ func main() {
 			}
 
 			if *dump_hashtags {
-				hashtags_rsp := tw.Get("entities.hashtags")
+				hashtags_rsp := tw.Get("tweet.entities.hashtags")
 
 				if !hashtags_rsp.Exists() {
 					err_ch <- errors.New("Missing hashtags")

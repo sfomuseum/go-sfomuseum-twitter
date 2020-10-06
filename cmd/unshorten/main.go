@@ -25,7 +25,7 @@ func main() {
 	to := flag.Int("timeout", 30, "Maximum number of seconds of for an unshorterning request")
 	seed_file := flag.String("seed", "", "Pre-fill the unshortening cache with data in this file")
 
-	tweets := flag.String("tweets", "", "The path your Twitter archive tweet.js file")
+	tweets := flag.String("tweets", "", "The path your Twitter archive tweet.json file (produced by the sfomuseum/go-sfomuseum-twitter/cmd/trim tool, or equivalent)")
 
 	flag.Parse()
 
@@ -119,7 +119,7 @@ func main() {
 				done_ch <- true
 			}()
 
-			urls_rsp := tw.Get("entities.urls")
+			urls_rsp := tw.Get("tweet.entities.urls")
 
 			if !urls_rsp.Exists() {
 				err_ch <- errors.New("Missing URLs")

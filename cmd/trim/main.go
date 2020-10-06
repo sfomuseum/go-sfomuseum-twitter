@@ -9,8 +9,8 @@ import (
 
 func main() {
 
-	tweets := flag.String("tweets", "", "...")
-	trim := flag.String("trim", "window.YTD.tweet.part0 = ", "...")
+	tweets := flag.String("tweets", "", "The path to your `tweets.js` file.")
+	trim := flag.String("trim", "window.YTD.tweet.part0 = ", "The leading string to remove from your `tweets.js` file.")
 
 	flag.Parse()
 
