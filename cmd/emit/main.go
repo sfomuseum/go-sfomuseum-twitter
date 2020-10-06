@@ -37,7 +37,7 @@ func main() {
 		DoneChannel: done_ch,
 		ErrorChannel: err_ch,
 		TweetChannel: tweet_ch,
-		TrimPrefix := *trim_prefix,
+		TrimPrefix: *trim_prefix,
 	}
 	
 	go walk.WalkTweets(ctx, walk_opts, tweets_fh)

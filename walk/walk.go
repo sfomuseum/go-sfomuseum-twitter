@@ -14,7 +14,7 @@ type WalkOptions struct {
 	TrimPrefix bool
 }
 
-func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.ReadSeeker) {
+func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.Reader) {
 
 	defer func() {
 		opts.DoneChannel <- true
@@ -30,6 +30,7 @@ func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.ReadSeeker)
 		}
 
 		tweets_fh = fh
+
 	}
 	
 	type post struct {

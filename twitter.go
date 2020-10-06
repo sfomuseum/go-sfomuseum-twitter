@@ -4,9 +4,10 @@ import (
 	"context"
 	"path/filepath"
 	"gocloud.dev/blob"
+	"io"
 )
 
-func OpenTweets(ctx context.Context, tweets_uri string) (io.Reader, error) {
+func OpenTweets(ctx context.Context, tweets_uri string) (io.ReadCloser, error) {
 
 	tweets_fname := filepath.Base(tweets_uri)
 	tweets_root := filepath.Dir(tweets_uri)
