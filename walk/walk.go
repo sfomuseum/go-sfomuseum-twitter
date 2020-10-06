@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sync"
 )
 
 type WalkOptions struct {
@@ -29,6 +30,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 	go WalkTweets(ctx, walk_opts, tweets_fh)
 
 	working := true
+	wg := new(sync.WaitGroup)
 
 	for {
 		select {
@@ -38,11 +40,19 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 			return err
 		case body := <-tweet_ch:
 
-			err := cb(ctx, body)
+			wg.Add(1)
 
-			if err != nil {
-				err_ch <- err
-			}
+			go func() {
+
+				defer wg.Done()
+
+				err := cb(ctx, body)
+
+				if err != nil {
+					err_ch <- err
+				}
+			}()
+
 		}
 
 		if !working {
@@ -50,6 +60,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 		}
 	}
 
+	wg.Wait()
 	return nil
 }
 

@@ -21,7 +21,7 @@ func main() {
 	dump_mentions := flag.Bool("mentions", true, "Export users mentioned in tweets.")
 
 	tweets_uri := flag.String("tweets-uri", "", "A valid gocloud.dev/blob URI to your `tweets.js` file.")
-	trim_prefix := flag.Bool("trim-prefix", true, "")
+	trim_prefix := flag.Bool("trim-prefix", true, "Trim default tweet.js JavaScript prefix.")
 
 	flag.Parse()
 

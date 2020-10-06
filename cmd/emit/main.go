@@ -11,13 +11,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"sync"
 	"sync/atomic"
 )
 
 func main() {
 
 	tweets_uri := flag.String("tweets-uri", "", "A valid gocloud.dev/blob URI to your `tweets.js` file.")
-	trim_prefix := flag.Bool("trim-prefix", true, "")
+	trim_prefix := flag.Bool("trim-prefix", true, "Trim default tweet.js JavaScript prefix.")
 
 	to_stdout := flag.Bool("stdout", true, "Emit to STDOUT")
 	to_devnull := flag.Bool("null", false, "Emit to /dev/null")
@@ -59,54 +60,41 @@ func main() {
 
 	defer tweets_fh.Close()
 
-	err_ch := make(chan error)
-	tweet_ch := make(chan []byte)
-	done_ch := make(chan bool)
-
-	walk_opts := &walk.WalkOptions{
-		DoneChannel:  done_ch,
-		ErrorChannel: err_ch,
-		TweetChannel: tweet_ch,
-	}
-
-	go walk.WalkTweets(ctx, walk_opts, tweets_fh)
-
-	working := true
 	count := uint32(0)
+	mu := new(sync.RWMutex)
 
 	if *as_json {
 		wr.Write([]byte("["))
 	}
 
-	for {
-		select {
-		case <-done_ch:
-			working = false
-		case err := <-err_ch:
-			log.Println(err)
-			cancel()
-		case body := <-tweet_ch:
+	cb := func(ctx context.Context, body []byte) error {
 
-			new_count := atomic.AddUint32(&count, 1)
+		mu.Lock()
+		defer mu.Unlock()
 
-			if new_count > 1 {
+		new_count := atomic.AddUint32(&count, 1)
 
-				if *as_json {
-					wr.Write([]byte(","))
-				}
+		if new_count > 1 {
+
+			if *as_json {
+				wr.Write([]byte(","))
 			}
-
-			if *as_json && *format_json {
-				body = pretty.Pretty(body)
-			}
-
-			wr.Write(body)
-			wr.Write([]byte("\n"))
 		}
 
-		if !working {
-			break
+		if *as_json && *format_json {
+			body = pretty.Pretty(body)
 		}
+
+		wr.Write(body)
+		wr.Write([]byte("\n"))
+
+		return nil
+	}
+
+	err = walk.WalkTweetsWithCallback(ctx, tweets_fh, cb)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	if *as_json {
