@@ -42,7 +42,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 
 			wg.Add(1)
 
-			go func() {
+			go func(body []byte) {
 
 				defer wg.Done()
 
@@ -51,7 +51,8 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 				if err != nil {
 					err_ch <- err
 				}
-			}()
+				
+			}(body)
 
 		}
 
