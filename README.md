@@ -47,8 +47,39 @@ For example:
 	-json \
 	-format-json \
 	-tweets-uri file:///usr/local/twitter/data/tweet.js
-
-...
+[
+{
+  "created_at": "Mon Sep 19 19:21:04 +0000 2011",
+  "display_text_range": ["0", "88"],
+  "entities": {
+    "hashtags": [],
+    "symbols": [],
+    "urls": [
+      {
+        "display_url": "bit.ly/q8nobK",
+        "expanded_url": "http://bit.ly/q8nobK",
+        "indices": ["68", "88"],
+        "url": "http://t.co/aGv43tHf",
+        "unshortened_url": "https://www.flysfo.com/web/page/sfo_museum/exhibitions/terminal1_exhibitions/B3_archive/robert_apte/01.html"
+      }
+    ],
+    "user_mentions": []
+  },
+  "favorite_count": "0",
+  "favorited": false,
+  "full_text": "Is anyone else hot? How about an Antarctic iceberg to cool you off: http://t.co/aGv43tHf",
+  "id": "115868023763632128",
+  "id_str": "115868023763632128",
+  "lang": "en",
+  "possibly_sensitive": false,
+  "retweet_count": "0",
+  "retweeted": false,
+  "source": "\u003ca href=\"https://about.twitter.com/products/tweetdeck\" rel=\"nofollow\"\u003eTweetDeck\u003c/a\u003e",
+  "truncated": false,
+  "created": 1316460064
+}
+...and so on
+]
 ```
 
 ### pointers
