@@ -3,6 +3,7 @@ package walk
 import (
 	"context"
 	"encoding/json"
+	"github.com/aaronland/go-json-query"
 	"io"
 	"sync"
 )
@@ -11,11 +12,17 @@ type WalkOptions struct {
 	TweetChannel chan []byte
 	ErrorChannel chan error
 	DoneChannel  chan bool
+	QuerySet     *query.QuerySet
+}
+
+type WalkWithCallbackOptions struct {
+	Callback WalkTweetsCallbackFunc
+	QuerySet *query.QuerySet
 }
 
 type WalkTweetsCallbackFunc func(ctx context.Context, tweet []byte) error
 
-func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTweetsCallbackFunc) error {
+func WalkTweetsWithCallback(ctx context.Context, opts *WalkWithCallbackOptions, tweets_fh io.Reader) error {
 
 	err_ch := make(chan error)
 	tweet_ch := make(chan []byte)
@@ -25,6 +32,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 		DoneChannel:  done_ch,
 		ErrorChannel: err_ch,
 		TweetChannel: tweet_ch,
+		QuerySet:     opts.QuerySet,
 	}
 
 	go WalkTweets(ctx, walk_opts, tweets_fh)
@@ -46,7 +54,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 
 				defer wg.Done()
 
-				err := cb(ctx, body)
+				err := opts.Callback(ctx, body)
 
 				if err != nil {
 					err_ch <- err
@@ -99,6 +107,21 @@ func WalkTweets(ctx context.Context, opts *WalkOptions, tweets_fh io.Reader) {
 		if err != nil {
 			opts.ErrorChannel <- err
 			continue
+		}
+
+		if opts.QuerySet != nil {
+
+			matches, err := query.Matches(ctx, opts.QuerySet, tw_body)
+
+			if err != nil {
+
+				opts.ErrorChannel <- err
+				continue
+			}
+
+			if !matches {
+				continue
+			}
 		}
 
 		opts.TweetChannel <- tw_body
