@@ -51,7 +51,7 @@ func WalkTweetsWithCallback(ctx context.Context, tweets_fh io.Reader, cb WalkTwe
 				if err != nil {
 					err_ch <- err
 				}
-				
+
 			}(body)
 
 		}

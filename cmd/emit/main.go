@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"github.com/sfomuseum/go-sfomuseum-twitter"
+	"github.com/sfomuseum/go-sfomuseum-twitter/document"
 	"github.com/sfomuseum/go-sfomuseum-twitter/walk"
 	"github.com/tidwall/pretty"
 	_ "gocloud.dev/blob/fileblob"
@@ -25,7 +26,16 @@ func main() {
 	as_json := flag.Bool("json", false, "Emit a JSON list.")
 	format_json := flag.Bool("format-json", false, "Format JSON output for each record.")
 
+	append_timestamp := flag.Bool("append-timestamp", false, "Append a `created` property containing a Unix timestamp derived from the `created_at` property.")
+	append_urls := flag.Bool("append-urls", false, "Append a `unshortened_url` property for each `entities.urls.(n)` property.")
+	append_all := flag.Bool("append-all", false, "Enable all the `-append-` flags.")
+
 	flag.Parse()
+
+	if *append_all {
+		*append_timestamp = true
+		*append_urls = true
+	}
 
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -68,6 +78,28 @@ func main() {
 	}
 
 	cb := func(ctx context.Context, body []byte) error {
+
+		if *append_timestamp {
+
+			b, err := document.AppendCreatedAtTimestamp(ctx, body)
+
+			if err != nil {
+				return err
+			}
+
+			body = b
+		}
+
+		if *append_urls {
+
+			b, err := document.AppendUnshortenedURLs(ctx, body)
+
+			if err != nil {
+				return err
+			}
+
+			body = b
+		}
 
 		mu.Lock()
 		defer mu.Unlock()

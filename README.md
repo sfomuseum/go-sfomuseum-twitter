@@ -17,8 +17,14 @@ go build -mod vendor -o bin/unshorten cmd/unshorten/main.go
 ### emit
 
 ```
-$> ./bin/emit -h
+> ./bin/emit -h
 Usage of ./bin/emit:
+  -append-all -append-
+    	Enable all the -append- flags.
+  -append-timestamp created
+    	Append a created property containing a Unix timestamp derived from the `created_at` property.
+  -append-urls unshortened_url
+    	Append a unshortened_url property for each `entities.urls.(n)` property.
   -format-json
     	Format JSON output for each record.
   -json
@@ -31,7 +37,7 @@ Usage of ./bin/emit:
     	Trim default tweet.js JavaScript prefix. (default true)
   -tweets-uri tweets.js
     	A valid gocloud.dev/blob URI to your tweets.js file.
-```
+```	
 
 ### pointers
 
