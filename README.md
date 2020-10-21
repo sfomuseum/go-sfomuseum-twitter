@@ -39,6 +39,18 @@ Usage of ./bin/emit:
     	A valid gocloud.dev/blob URI to your tweets.js file.
 ```	
 
+For example:
+
+```
+./bin/emit \
+	-append-all \
+	-json \
+	-format-json \
+	-tweets-uri file:///usr/local/twitter/data/tweet.js
+
+...
+```
+
 ### pointers
 
 Export pointers (for users and hashtags) from a `tweets.json` file (produced by the `trim` tool).
