@@ -182,7 +182,11 @@ func main() {
 		}()
 	}
 
-	err = walk.WalkTweetsWithCallback(ctx, tweets_fh, cb)
+	opts := &walk.WalkWithCallbackOptions{
+		Callback: cb,
+	}
+
+	err = walk.WalkTweetsWithCallback(ctx, opts, tweets_fh)
 
 	completed_ch <- true
 
