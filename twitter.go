@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	"log"
 )
 
 const JAVASCRIPT_PREFIX string = "window.YTD.tweet.part0 = "
@@ -20,6 +21,9 @@ func OpenTweets(ctx context.Context, tweets_uri string, opts *OpenTweetsOptions)
 	tweets_fname := filepath.Base(tweets_uri)
 	tweets_root := filepath.Dir(tweets_uri)
 
+	log.Println(tweets_root)
+	log.Println(tweets_fname)
+	
 	tweets_bucket, err := blob.OpenBucket(ctx, tweets_root)
 
 	if err != nil {

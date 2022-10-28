@@ -374,6 +374,7 @@ $> ./bin/emit \
 ...and so on
 ]
 ```
+
 ### pointers
 
 Export pointers (for users and hashtags) from a `tweets.json` file (produced by the `trim` tool).
